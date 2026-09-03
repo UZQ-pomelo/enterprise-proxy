@@ -130,6 +130,15 @@ class TestClassifyOrder(PolicyTestCase):
                           headers_text="User-Agent: password=abc\r\n")
         self.assertEqual(d.rule_type, "signature")
 
+    def test_undefined_role_falls_back_to_global(self):
+        # 角色表完全未定义该角色 → 等同无覆盖,沿用全局特征表
+        d = self.classify("ghost", "http://corp-doc.com/login?password=1")
+        self.assertEqual(d.rule_type, "signature")
+        body = "违规内容特征词"
+        d2 = self.engine.check_response(role_name="ghost",
+                                        content_type="text/html", body=body.encode())
+        self.assertIsNotNone(d2)
+
     def test_whitelist_mode_via_role_flag(self):
         # 角色显式开启白名单模式后,非名单域名一律拦截
         path = os.path.join(self.dir, "roles.toml")

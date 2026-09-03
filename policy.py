@@ -70,6 +70,13 @@ class PolicyEngine:
                 return v
         return getattr(self.cfg.policy, attr)
 
+    @staticmethod
+    def _sigs(table, role_name):
+        """特征表查找:角色未定义 → 回退全局;定义角色显式空数组 → 绕过。"""
+        if role_name in table:
+            return table[role_name]
+        return table.get(None, [])
+
     def _whitelist_mode(self, role_name) -> bool:
         rp = self.cfg.roles.get(role_name) if role_name else None
         if rp is not None and rp.whitelist_mode is not None:
@@ -112,7 +119,7 @@ class PolicyEngine:
 
         # 4) 请求特征
         blob = f"{url_text}\r\n{headers_text}"
-        for i, rx in enumerate(self._req_sigs.get(role_name, [])):
+        for i, rx in enumerate(self._sigs(self._req_sigs, role_name)):
             if rx.search(blob):
                 return Decision("block", "signature", f"req_sig:{i}",
                                 "请求特征命中(URL/头内容)")
@@ -125,7 +132,7 @@ class PolicyEngine:
                 and content_type.lower().startswith("text/")):
             return None
         text = body.decode("utf-8", "ignore") if isinstance(body, bytes) else body
-        for i, rx in enumerate(self._resp_sigs.get(role_name, [])):
+        for i, rx in enumerate(self._sigs(self._resp_sigs, role_name)):
             if rx.search(text):
                 return Decision("block", "resp_signature", f"resp_sig:{i}",
                                 "响应内容特征命中(违规内容)")

@@ -85,6 +85,10 @@ class DiskCache:
             return False
         return True
 
+    def is_cacheable_type(self, headers) -> bool:
+        """仅按 Content-Type 判定是否为静态可缓存类型(不含 no-store 等禁忌)。"""
+        return type_matches(headers.get("content-type") or "", self._static_types)
+
     # ---- 存取 ----
     def put(self, url, headers, body) -> bool:
         """满足缓存条件则落盘。headers 为已净化(hop-by-hop 剥离)的响应头。"""
