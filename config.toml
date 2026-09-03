@@ -2,8 +2,8 @@
 # 修改 policy 部分后最多 reload_interval 秒自动生效(热加载);proxy 部分需重启
 
 [proxy]
-listen_host = "0.0.0.0"     # 监听地址;单机演示可用 127.0.0.1
-listen_port = 8080
+listen_host = "127.0.0.1"   # 监听地址;单机演示即本机
+listen_port = 18080         # 演示端口(与 README/演示脚本一致)
 max_connections = 64
 recv_timeout = 60           # 数据读超时(秒)
 idle_timeout = 60           # keep-alive 空闲超时(秒)
