@@ -76,7 +76,8 @@
 | `admin.py` | CLI:报表(今日/按天/用户 TOP/拦截排行)、缓存状态、规则重载提示 | 命令行子命令 | audit/policy/cache |
 | `block_page.html` | 403 拦截页模板 | 静态文件 | — |
 | `demo_sites.py` | 离线演示:起 3 个模拟"外网站点"(文档站/游戏站/购物站/含违规特征页) | 直接运行 | http.server |
-| `config.yaml` / `users.yaml` / `roles.yaml` | 见 §7 | — | — |
+| `config.py` | TOML 装载与配置模型(Config/ServerCfg/PolicyCfg/CacheCfg…),含热加载文件变更探测 | `load_config_dir(dir) -> Config`、`Config.is_changed() -> bool` | tomllib(标准库) |
+| `config.toml` / `users.toml` / `roles.toml` | 见 §7。注:配置文件采用 **TOML**(Python ≥3.11 标准库 tomllib 解析,保持零第三方依赖);键结构与本设计 §7 一致,便于演示期手改与热加载 | — | — |
 | `tests/` | `test_http_message.py`、`test_policy.py`、`test_auth.py`、`test_cache.py`、`e2e_proxy.py` | — | unittest |
 
 设计原则:每模块单一职责、只通过函数/小类互相调用、可单独单元测试;转发主路径不放第三方依赖。
@@ -122,51 +123,75 @@ Decision 字段:`{action: allow|block, rule_type, rule_id, reason}`。大小写�
 
 ## 7. 数据与配置模型
 
-### 7.1 config.yaml(示例)
-```yaml
-proxy:
-  listen_host: 0.0.0.0
-  listen_port: 8080
-  max_connections: 64
-  recv_timeout: 60
-  idle_keepalive_timeout: 60
-  auth_required: true
-audit:
-  db_path: data/audit.db
-  daily_rotation: false      # 演示期单库;报表按日过滤
-policy:
-  reload_interval: 60
-  whitelist_mode: false
-  whitelist: ["corp-doc.com"]   # 演示可切换
-  blacklist_domains: ["*.game-site.com"]
-  blacklist_url_regex: []
-  blacklist_keywords: []
-  disabled_categories: []       # 全局默认;角色级优先于全局
-  request_signatures: ["password\\s*=", "赌博"]
-  response_signatures: ["违规内容特征词"]
-cache:
-  enabled: true
-  dir: cache/
-  max_files: 500
-  max_bytes: 209715200
-  static_types: ["image/*","text/css","application/javascript","font/*"]
-block_page: block_page.html
+### 7.1 config.toml(示例)
+```toml
+[proxy]
+listen_host = "0.0.0.0"
+listen_port = 8080
+max_connections = 64
+recv_timeout = 60
+idle_timeout = 60
+auth_required = true
+
+[audit]
+db_path = "data/audit.db"
+
+[policy]
+reload_interval = 60
+whitelist_mode = false
+whitelist = ["corp-doc.com"]
+blacklist_domains = ["*.game-site.com"]
+blacklist_url_regex = []
+blacklist_keywords = []
+disabled_categories = []        # 全局默认;角色级优先
+request_signatures = ["password\\s*=", "赌博"]
+response_signatures = ["违规内容特征词"]
+
+[cache]
+enabled = true
+dir = "cache"
+max_files = 500
+max_bytes = 209715200
+static_types = ["image/*", "text/css", "application/javascript", "font/*"]
+
+block_page = "block_page.html"
 ```
 
-### 7.2 users.yaml / roles.yaml
-```yaml
-# users.yaml: plaintext 密码仅教学演示,生产需换哈希(写入报告局限)
-users:
-  admin:      {password: admin123,  role: admin}
-  manager:    {password: mng123,    role: manager}
-  employee:   {password: emp123,    role: employee}
+### 7.2 users.toml / roles.toml
+```toml
+# users.toml: plaintext 密码仅教学演示,生产需换哈希(写入报告局限)
+[users.admin]
+password = "admin123"
+role = "admin"
+
+[users.manager]
+password = "mng123"
+role = "manager"
+
+[users.employee]
+password = "emp123"
+role = "employee"
 ```
-```yaml
-# roles.yaml: 角色策略。优先级:角色定义 > 全局配置(config.yaml 同名项为回退默认)
-roles:
-  admin:    {whitelist_mode: false, disabled_categories: [], request_signatures: []}
-  manager:  {whitelist_mode: false, disabled_categories: ["game"], request_signatures: []}
-  employee: {whitelist_mode: false, disabled_categories: ["game","shopping","gambling"], request_signatures: ["password\\s*="]}
+```toml
+# roles.toml: 角色策略。语义:某键在角色中缺失 → 回退全局配置(config.toml 同名项);
+# 显式给出空数组/布尔值 → 以角色为准(可用空数组让 admin 绕过全局特征检查)。
+[roles.admin]
+whitelist_mode = false
+disabled_categories = []
+request_signatures = []
+response_signatures = []
+
+[roles.manager]
+whitelist_mode = false
+disabled_categories = ["game"]
+request_signatures = []
+response_signatures = []
+
+[roles.employee]
+whitelist_mode = false
+disabled_categories = ["game", "shopping", "gambling"]
+request_signatures = ["password\\s*="]
+response_signatures = []
 ```
 
 ### 7.3 SQLite 审计表
@@ -176,7 +201,7 @@ CREATE TABLE requests(
   ts TEXT NOT NULL,            -- ISO8601 本地时间
   user TEXT, role TEXT,
   method TEXT, host TEXT, url_path TEXT, port INTEGER,
-  decision TEXT,               -- allow|block_whitelist|block_blacklist|block_category|block_signature|block_resp_signature
+  decision TEXT,               -- allow|block_whitelist|block_blacklist|block_category|block_signature|block_resp_signature|auth_fail|error
   rule_id TEXT, reason TEXT,
   bytes_up INTEGER, bytes_down INTEGER,
   resp_status INTEGER, cache_hit INTEGER DEFAULT 0,
