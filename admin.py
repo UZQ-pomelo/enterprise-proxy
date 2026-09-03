@@ -142,7 +142,7 @@ def _main(argv=None) -> int:
                 "top-users": os.path.join("data", "audit.db"),
                 "top-hosts": os.path.join("data", "audit.db"),
                 "blocked": os.path.join("data", "audit.db"),
-                "cache-stats": os.path.join("data", "cache")}
+                "cache-stats": "cache"}   # 与根配置 cache.dir 一致
     try:
         path = args.path or defaults[args.cmd]
         if args.cmd == "report":

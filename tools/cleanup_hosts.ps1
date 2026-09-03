@@ -2,7 +2,7 @@
 $ErrorActionPreference = "Stop"
 $hostsFile = "$env:SystemRoot\System32\drivers\etc\hosts"
 $domains = @("corp-doc.com", "game-site.com", "shop.example",
-             "blocked-site.example")
+             "blocked-site.example", "content-check.example")
 
 $lines = Get-Content $hostsFile
 $kept = @()

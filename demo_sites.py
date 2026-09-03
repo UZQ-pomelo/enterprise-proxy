@@ -1,8 +1,9 @@
-"""离线演示站点矩阵:为 4 个演示域名在固定端口起纯本地 HTTP 服务。
+"""离线演示站点矩阵:为演示域名在固定端口(18001–18005)起纯本地 HTTP 服务。
 
 配合 tools/*.ps1 的 hosts 映射,浏览器/curl 访问演示域名时实际落在
 127.0.0.1,整个演示不依赖外网。站点内容刻意与角色演示矩阵呼应:
-corp-doc 是"内部文档站"(白名单候选),game/shop 是员工禁用类别站。
+corp-doc 是"内部文档站"(白名单候选),game/shop 是员工禁用类别站,
+blocked-site 命中全局黑名单,content-check 正文含响应特征词(内容签名演示)。
 """
 import socketserver
 import threading
@@ -19,6 +20,10 @@ SITES = {
                                       "全场包邮活动")},
     "blocked-site.example": {"port": 18004, "title": "不良信息聚合站",
                              "lines": ("恶意软件下载", "违规内容分享")},
+    # 干净域名但正文含违规特征词:演示"响应内容特征"就地拦截
+    "content-check.example": {"port": 18005, "title": "内容示例社区",
+                              "lines": ("技术讨论帖", "某回帖出现违规内容特征词",
+                                        "生活闲聊板块")},
 }
 
 PNG = (b"\x89PNG\r\n\x1a\n" + b"\x00" * 8 +

@@ -10,7 +10,8 @@ $mapping = @(
     "127.0.0.1 corp-doc.com",
     "127.0.0.1 game-site.com",
     "127.0.0.1 shop.example",
-    "127.0.0.1 blocked-site.example"
+    "127.0.0.1 blocked-site.example",
+    "127.0.0.1 content-check.example"
 )
 
 $lines = Get-Content $hostsFile

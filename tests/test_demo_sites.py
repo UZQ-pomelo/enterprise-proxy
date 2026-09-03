@@ -75,11 +75,19 @@ class TestDemoSites(DemoEnv):
 
 
 class TestSiteTable(unittest.TestCase):
-    def test_ports_18001_18004_and_binding_map(self):
+    def test_ports_18001_18005_and_binding_map(self):
         self.assertEqual(
             {d: c["port"] for d, c in SITES.items()},
             {"corp-doc.com": 18001, "game-site.com": 18002,
-             "shop.example": 18003, "blocked-site.example": 18004})
+             "shop.example": 18003, "blocked-site.example": 18004,
+             "content-check.example": 18005})
+
+    def test_content_check_page_carries_forbidden_word(self):
+        # 响应内容特征演示的前提:该站正文必须含 config.toml 的特征词
+        from demo_sites import page_html
+        body = page_html("内容示例社区",
+                         ("某回帖出现违规内容特征词",), "content-check.example")
+        self.assertIn("违规内容特征词".encode(), body)
 
     def test_domains_overlap_proxy_policy(self):
         # 类别演示前提:game/shop 域名必须能打上对应类别标签
