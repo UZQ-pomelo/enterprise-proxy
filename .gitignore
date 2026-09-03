@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 运行时产物
+data/
+cache/
+*.db
+*.log
+
+# 本地环境
+.venv/
+venv/
+
+# 演示辅助(hosts 等本地改动说明)
+*.tmp
