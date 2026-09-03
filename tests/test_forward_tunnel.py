@@ -20,12 +20,12 @@ from runtime import ProxyRuntime, RuntimeCtx, finish_rec, new_rec
 
 
 def toml_for(*, cache_block="enabled = false\n", policy_block="[policy]\n",
-             audit_db="audit.db"):
+             audit_db="audit.db", proxy_extra=""):
     return f"""[proxy]
 listen_host = "127.0.0.1"
 recv_timeout = 5.0
 idle_timeout = 5.0
-
+{proxy_extra}
 [audit]
 db_path = "{audit_db}"
 

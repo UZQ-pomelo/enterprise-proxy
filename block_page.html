@@ -2,26 +2,36 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>访问被拦截 · 企业代理</title>
+<title>访问被拦截 - 企业网络代理</title>
 <style>
-body{font-family:system-ui,'Microsoft YaHei',sans-serif;background:#f5f6fa;display:flex;
-height:100vh;margin:0;align-items:center;justify-content:center}
-.card{background:#fff;padding:48px 56px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.12);
-text-align:center;max-width:560px}
-h1{color:#d33;font-size:26px;margin:0 0 12px}
-.desc{color:#555;line-height:1.8;margin-bottom:20px}
-.rule{display:inline-block;background:#fdeaea;color:#b02a2a;border-radius:6px;
-padding:6px 14px;font-family:Consolas,monospace;font-size:13px}
-.foot{color:#999;font-size:12px;margin-top:24px}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: system-ui, 'Microsoft YaHei', sans-serif;
+         background: linear-gradient(135deg, #f5f6fa 0%, #eef0f7 100%);
+         min-height: 100vh; display: flex; align-items: center;
+         justify-content: center; }
+  .card { background: #fff; padding: 52px 60px; border-radius: 16px;
+          box-shadow: 0 12px 40px rgba(30, 40, 80, .14);
+          text-align: center; max-width: 620px; border-top: 5px solid #d33; }
+  .shield { font-size: 52px; line-height: 1; margin-bottom: 18px; }
+  h1 { color: #c22; font-size: 26px; margin-bottom: 14px; }
+  .desc { color: #555; line-height: 1.9; font-size: 15px; margin-bottom: 20px; }
+  .rule { display: inline-block; background: #fdeaea; color: #a82424;
+          border-radius: 8px; padding: 7px 16px;
+          font-family: Consolas, 'Courier New', monospace; font-size: 13px;
+          letter-spacing: .3px; }
+  .reason { color: #888; font-size: 13px; margin-top: 14px; line-height: 1.7; }
+  .foot { color: #aaa; font-size: 12px; margin-top: 26px;
+          border-top: 1px dashed #e3e5ee; padding-top: 16px; }
 </style>
 </head>
 <body>
 <div class="card">
+  <div class="shield">&#128737;</div>
   <h1>访问被拦截</h1>
   <div class="desc">该请求违反了企业网络访问策略,已被代理服务器拦截。<br>
-  请勿尝试绕过,如有疑问请联系网络管理员。</div>
+      请勿尝试绕过,如有疑问请联系网络管理员。</div>
   <div class="rule">规则: __RULE_ID__</div>
-  <p class="desc" style="margin-top:16px">原因: __REASON__</p>
+  <p class="reason">原因: __REASON__</p>
   <div class="foot">Enterprise Proxy · Traffic Audit &amp; Access Control</div>
 </div>
 </body>
