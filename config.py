@@ -102,15 +102,20 @@ class Config:
     roles: dict
     block_page: bytes
     config_dir: str
-    _watch: list = field(default_factory=list)  # [(path, mtime_ns)]
+    _watch: list = field(default_factory=list)  # [(path, mtime_ns, size)]
 
     def is_changed(self) -> bool:
-        """任一被监视的配置文件是否已被修改(热加载探测)。"""
-        for path, old in self._watch:
+        """任一被监视的配置文件是否已被修改(热加载探测)。
+
+        同时比较 mtime 与文件大小:Windows 文件系统时间戳分辨率可能较粗,
+        同刻度内的增删改会体现为大小变化。
+        """
+        for path, old_mt, old_size in self._watch:
             try:
-                if os.stat(path).st_mtime_ns != old:
-                    return True
+                st = os.stat(path)
             except OSError:
+                return True
+            if st.st_mtime_ns != old_mt or st.st_size != old_size:
                 return True
         return False
 
@@ -217,7 +222,7 @@ def load_config_dir(config_dir: str = ".") -> Config:
             block_page = f.read()
 
     watch_paths = [cfg_path, users_path, roles_path]
-    watch = [(p, _mtime_ns(p)) for p in watch_paths]
+    watch = [(p, _mtime_ns(p), os.path.getsize(p)) for p in watch_paths]
 
     return Config(server=server, audit=audit, cache=cache, policy=policy,
                   users=users, roles=roles, block_page=block_page,
