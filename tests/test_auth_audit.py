@@ -105,6 +105,23 @@ class TestAudit(AuditTestCase):
         self.assertEqual(top_users[0][0], "employee")   # employee 10000 字节最高
         self.assertEqual(top_users[0][1], 10000)
 
+    def test_summary_totals(self):
+        self.log.add(REC_A)   # up 120 down 5000
+        self.log.add(REC_B)   # up 120 down 5000
+        self.log.add(REC_C)   # up 120 down 3000
+        s = self.log.summary()
+        self.assertEqual(s["total"], 3)
+        self.assertEqual(s["up"], 360)
+        self.assertEqual(s["down"], 13000)
+        day = self.log.summary(day="2026-09-03")
+        self.assertEqual(day["total"], 2)
+        self.assertEqual(day["down"], 10000)
+
+    def test_summary_empty_db(self):
+        s = self.log.summary()
+        self.assertEqual(s["total"], 0)
+        self.assertEqual(s["up"], 0)
+
     def test_missing_keys_default_to_none(self):
         rec = dict(REC_A)
         del rec["reason"]

@@ -76,6 +76,16 @@ class AuditLog:
         with self._lock:
             return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
 
+    def summary(self, *, day=None):
+        """总量概览(供 admin report):总请求数 / 上、下行总字节。"""
+        where, args = self._where(day)
+        sql = ("SELECT COUNT(*) AS total, "
+               "COALESCE(SUM(bytes_up), 0) AS up, "
+               "COALESCE(SUM(bytes_down), 0) AS down "
+               "FROM requests" + where)
+        with self._lock:
+            return dict(self._conn.execute(sql, args).fetchone())
+
     def decision_counts(self, *, day=None, user=None):
         where, args = self._where(day, user)
         sql = ("SELECT decision, COUNT(*) AS cnt FROM requests"
