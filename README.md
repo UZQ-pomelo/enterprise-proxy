@@ -24,6 +24,8 @@
 
 ## 二、快速开始(单机离线演示)
 
+> 完整分步操作手册(含预期输出与 FAQ):`docs/deliverables/run-guide.md`。
+
 ```bat
 :: 1. 启动代理(默认监听 127.0.0.1:18080,读取 config.toml)
 python run_proxy.py
