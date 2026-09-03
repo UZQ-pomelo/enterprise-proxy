@@ -62,7 +62,13 @@ def apply_decision(rec: dict, d) -> None:
 
 
 def finish_rec(ctx: RuntimeCtx, rec: dict) -> None:
-    """请求结束:回填字节计数(口径:客户端↔代理全部字节)与耗时。"""
+    """请求结束:回填字节计数(口径:客户端↔代理全部字节)与耗时。
+
+    user/role 在 new_rec 之后(认证通过时)才落 ctx,故在此刻刷新;
+    未认证/认证失败的行保持 None(审计口径:未知用户)。
+    """
+    rec["user"] = ctx.user
+    rec["role"] = ctx.role
     rec["bytes_up"] = ctx.reader.bytes_read - rec.pop("_r0", 0) \
         + rec.pop("_extra_up", 0)
     rec["bytes_down"] = ctx.writer.bytes - rec.pop("_w0", 0) \
