@@ -1,0 +1,14 @@
+# 演示账号(明文密码仅限教学演示环境;生产需换哈希存储 —— 见报告"局限"节)
+# 角色策略见 roles.toml
+
+[users.admin]
+password = "admin123"
+role = "admin"
+
+[users.manager]
+password = "mng123"
+role = "manager"
+
+[users.employee]
+password = "emp123"
+role = "employee"

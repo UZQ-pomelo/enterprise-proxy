@@ -1,0 +1,34 @@
+# 企业代理服务器主配置
+# 修改 policy 部分后最多 reload_interval 秒自动生效(热加载);proxy 部分需重启
+
+[proxy]
+listen_host = "0.0.0.0"     # 监听地址;单机演示可用 127.0.0.1
+listen_port = 8080
+max_connections = 64
+recv_timeout = 60           # 数据读超时(秒)
+idle_timeout = 60           # keep-alive 空闲超时(秒)
+auth_required = true
+
+[audit]
+db_path = "data/audit.db"   # 审计库(SQLite,WAL)
+
+[policy]
+whitelist_mode = false      # true = 仅放行白名单内域名(演示可切换,60s 内生效)
+whitelist = ["corp-doc.com"]
+# 全局合规红线:以下黑名单对所有角色生效,角色策略不可覆盖(见 roles.toml 注释)
+blacklist_domains = ["*.blocked-site.example"]
+blacklist_keywords = []
+blacklist_url_regex = []
+# 全局类别禁用默认值;角色级(roles.toml disabled_categories)优先
+disabled_categories = []
+request_signatures = ["password\\s*=", "赌博"]
+response_signatures = ["违规内容特征词"]
+
+[cache]
+enabled = true
+dir = "cache"
+max_files = 500
+max_bytes = 209715200
+static_types = ["image/*", "text/css", "application/javascript", "font/*"]
+
+block_page = "block_page.html"

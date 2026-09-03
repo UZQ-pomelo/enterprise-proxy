@@ -1,0 +1,27 @@
+# 角色策略
+# 语义:
+#   1) config.toml 中的 blacklist_* 为全局合规红线,对所有角色生效,角色不可覆盖
+#   2) 某键在本文件中缺失 → 回退全局(config.toml policy 同名项)
+#   3) 显式给出空数组/布尔值 → 以角色为准(admin/manager 用空数组绕过全局特征检查)
+#
+# 演示矩阵:
+#   employee 严管:禁 game/shopping/gambling 三类,且受全局特征表约束(缺省回退)
+#   manager   中管:仅禁 gambling,绕过特征表
+#   admin     全放行:无类别禁用、绕过特征表(仍受黑名单红线约束)
+
+[roles.admin]
+whitelist_mode = false
+disabled_categories = []
+request_signatures = []
+response_signatures = []
+
+[roles.manager]
+whitelist_mode = false
+disabled_categories = ["gambling"]
+request_signatures = []
+response_signatures = []
+
+[roles.employee]
+whitelist_mode = false
+disabled_categories = ["game", "shopping", "gambling"]
+# request_signatures / response_signatures 缺省 → 回退全局特征表
