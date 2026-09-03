@@ -63,6 +63,7 @@
 | 文件 | 职责 | 对外接口 | 依赖 |
 |---|---|---|---|
 | `run_proxy.py` | 入口:解析命令行、装载配置、启动 acceptor、信号处理 | `main()` | 其余全部 |
+| `runtime.py` | 运行期装配:ProxyRuntime(engine/audit/cache/cfg)与每连接 RuntimeCtx(reader/writer/用户/角色/关闭标记)的容器定义,避免模块循环依赖 | `ProxyRuntime`, `RuntimeCtx`, `new_rec(ctx, head)` | config/policy/audit/cache |
 | `proxy_server.py` | acceptor 循环、线程池(信号量)、监听 socket、优雅退出 | `start(config)` / `stop()` | — |
 | `client_handler.py` | 每连接:认证、请求循环(keep-alive)、超时、请求级派发 | `handle_connection(sock, config, audit)` | auth/http_message/policy/forward/tunnel/audit/cache |
 | `http_message.py` | 增量解析请求行+请求头;Content-Length body 读取;响应行+响应头解析;chunked 透传(不重组);工具函数 | `read_request_head()`, `read_body_exact()`, `parse_response_head()`, `is_chunked()`, `parse_url()` | — |
@@ -140,7 +141,7 @@ db_path = "data/audit.db"
 reload_interval = 60
 whitelist_mode = false
 whitelist = ["corp-doc.com"]
-blacklist_domains = ["*.game-site.com"]
+blacklist_domains = ["*.blocked-site.example"]   # 全局合规红线:对所有角色生效,角色策略不可覆盖(见 7.2 语义)
 blacklist_url_regex = []
 blacklist_keywords = []
 disabled_categories = []        # 全局默认;角色级优先
@@ -173,8 +174,12 @@ password = "emp123"
 role = "employee"
 ```
 ```toml
-# roles.toml: 角色策略。语义:某键在角色中缺失 → 回退全局配置(config.toml 同名项);
-# 显式给出空数组/布尔值 → 以角色为准(可用空数组让 admin 绕过全局特征检查)。
+# roles.toml: 角色策略。语义:
+# - 黑名单(7.1 blacklist_*)为全局合规红线,对所有角色生效,角色策略不可覆盖
+# - 某键在角色中缺失 → 回退全局配置(config.toml 同名项为回退默认)
+# - 显式给出空数组/布尔值 → 以角色为准(如 admin/manager 用空数组绕过全局特征检查)
+# 演示账号矩阵:employee 严管(game/shopping/gambling 全禁+全局特征),
+#              manager 中管(仅禁 gambling,绕过特征),admin 全放行(仅受黑名单红线约束)
 [roles.admin]
 whitelist_mode = false
 disabled_categories = []
@@ -183,15 +188,14 @@ response_signatures = []
 
 [roles.manager]
 whitelist_mode = false
-disabled_categories = ["game"]
+disabled_categories = ["gambling"]
 request_signatures = []
 response_signatures = []
 
 [roles.employee]
 whitelist_mode = false
 disabled_categories = ["game", "shopping", "gambling"]
-request_signatures = ["password\\s*="]
-response_signatures = []
+# request_signatures / response_signatures 缺省 → 回退全局(config.toml 中的特征表)
 ```
 
 ### 7.3 SQLite 审计表
@@ -228,21 +232,22 @@ CREATE INDEX idx_host ON requests(host);
 | 集成 | `demo_sites.py` 起模拟站 → `e2e_proxy.py` 用真实 socket/`urllib` 走代理断言:放行、黑名单 403、白名单模式、类别拦截、特征拦截、认证 407、缓存命中二次请求 |
 | 演示 | hosts 映射域名(演示脚本检测/写入提示);浏览器 + curl 双客户端;视频脚本见 §10 |
 
-离线演示站点设计(`demo_sites.py`,端口 8001-8003):
-- `corp-doc.com:8001` 内部文档站(白名单演示目标,少量静态图用于缓存演示)
-- `game-site.com:8002` 游戏站(黑名单+类别"game"拦截演示)
-- `shop.example:8003` 购物站(类别"shopping";含一页违规特征文本供响应特征拦截演示)
-hosts 映射由演示脚本打印说明(管理员权限写入 `C:\Windows\System32\drivers\etc\hosts` 由操作者手动/一键脚本完成)。
+离线演示站点设计(`demo_sites.py`,固定端口 18001-18004,`127.0.0.1` 监听):
+- `corp-doc.com:18001` 内部文档站(白名单/普通放行目标;`/static/logo.png`、`/static/app.css` 静态资源用于缓存演示;`/login?password=…` 触发请求特征;`/internal/memo` 页面含"违规内容特征词"触发响应特征)
+- `game-site.com:18002` 游戏站(类别 "game" 拦截演示)
+- `shop.example:18003` 购物站(类别 "shopping";manager 可访、employee 被拦)
+- `blocked-site.example:18004` 违规外站(全局黑名单红线演示,所有角色均被拦)
+hosts 映射由 `tools/setup_hosts.ps1` / `tools/cleanup_hosts.ps1` 一键完成(需管理员);命令行演示可用 `curl --resolve <域名>:<端口>:127.0.0.1` 免改 hosts。
 
 ## 10. 演示场景清单(供视频脚本与答辩使用)
 
-1. 启动代理 → 员工账号浏览器访问 corp-doc.com 正常(日志 allow)
-2. 访问 game-site.com → 403 拦截页(规则号、类别 game、employee 角色被禁)
-3. 换成 manager 账号访问 game-site.com → 放行(角色权限差异)
-4. 特征数据拦截:访问含违规特征词的页面被拦(响应特征);URL 带 `password=` 的请求被拦(请求特征)
+1. 启动代理 → employee 账号访问 corp-doc.com 正常(日志 allow)
+2. 全局红线:任意角色访问 blocked-site.example → 403 黑名单拦截页(规则号、说明"企业红线")——展示黑名单
+3. 类别差异:employee 访问 game-site.com / shop.example → 403(类别 game/shopping 被禁);manager 访问两者 → 200;manager 访问赌博类站点被拦(仅禁 gambling)
+4. 特征拦截:employee 访问 corp-doc.com/login?password=xxx → 403(请求特征);employee 访问 /internal/memo → 403(响应特征,页面含"违规内容特征词");admin 访问同一页 → 200(admin 显式空特征表绕过)
 5. admin.py 报表:按用户流量 TOP、拦截排行、按天历史查询
-6. 缓存演示:二次请求静态图片 `X-Cache: HIT`,日志 cache_hit=1
-7. 热加载:管理员改 roles.yaml 禁掉 shopping → 60s 内生效,employee 访问 shop.example 被拦
+6. 缓存演示:二次请求 /static/logo.png 命中缓存(cache_hit=1、bytes_up=0)
+7. 热加载:改 roles.toml 解除 employee 的 shopping 禁类 → 60s 内生效,employee 再访 shop.example 放行
 8. (可选)真实外网:浏览器代理指向本机,访问 www.baidu.com 域名级规则演示
 
 ## 11. 分工与讲解映射(模块级,报告/PPT 素材骨架)
